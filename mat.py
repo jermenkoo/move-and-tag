@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from mat.world import *
 
 if __name__ == '__main__':
@@ -6,6 +7,7 @@ if __name__ == '__main__':
 
     for line in inFile:
         world = World(line)
+        print(world.solution())
 
     inFile.close()
     outFile.close()

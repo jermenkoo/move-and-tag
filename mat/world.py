@@ -1,15 +1,13 @@
 from mat.robot import Robot
 from mat.obstacle import Obstacle
-
 import ast
 
-
 class World:
-    id = None
-    robots = []
-    obstacles = []
-
     def __init__(self, line):
+        self.id = None
+        self.robots = []
+        self.obstacles = []
+
         # Strip whitespace for convenience
         line = ''.join(line.split())
 
@@ -31,6 +29,18 @@ class World:
         # Read obstacles
         if obstacles_str:
             for idx, obstacle_str in enumerate(obstacles_str.split(';')):
-                vertexes = list(ast.literal_eval(obstacles_str))
+                vertexes = list(ast.literal_eval(obstacle_str))
                 self.obstacles.append(Obstacle(idx, vertexes))
 
+    def solution(self):
+        sol = '{}: '.format(self.id)
+        robots_moved = list(filter(lambda r: len(r.path) > 1, self.robots))
+
+        for robot in robots_moved:
+            path_str = str(robot.path).replace('[', '').replace(']', '')
+            sol += path_str
+
+            if robot != robots_moved[-1]:
+                sol += '; '
+
+        return sol
