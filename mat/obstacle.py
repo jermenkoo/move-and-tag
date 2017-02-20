@@ -11,4 +11,4 @@ class Obstacle(Polygon):
 
     def intersect(self, tup1, tup2):
         path = LineString([tup1, tup2])
-        path.intersects(super())
+        return path.crosses(super())
