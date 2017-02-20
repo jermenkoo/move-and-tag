@@ -8,11 +8,3 @@ class Robot:
     def goto(self, coord):
         self.path.append(coord)
         self.coord = coord
-        
-        
-    
-        
-    
-        
-        
-    
