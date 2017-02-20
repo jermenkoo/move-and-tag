@@ -1,7 +1,9 @@
 from mat.robot import Robot
 from mat.obstacle import Obstacle
-from shapely.geometry import LineString, Polygon
+from shapely.geometry import LineString, Polygon, Point
+import networkx as nx
 import ast
+
 
 class World:
     def __init__(self, line):
@@ -96,7 +98,6 @@ class World:
             self.robots[0].goto(end)
             currentRobot += 1
             #route = route + recGoAround(start, end);
-            
 
     def solution(self):
         sol = '{}: '.format(self.id)
@@ -110,3 +111,21 @@ class World:
                 sol += '; '
 
         return sol
+
+    def graph(self):
+        G = nx.DiGraph()
+
+        # Add nodes
+        for r in self.robots:
+            G.add_node(r)
+
+        for r1 in self.robots:
+            for r2 in self.robots:
+                if r1 != r2:
+                    x0, y0 = r1.coord
+                    x1, y1 = r2.coord
+                    dist = Point(x0, y0).distance(Point(x1, y1))
+
+                    G.add_edge(r1, r2, {'weight': dist, 'path': []})
+
+        return G

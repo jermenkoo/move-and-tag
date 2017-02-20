@@ -9,11 +9,3 @@ class Robot:
         #if coord != self.coord:
         self.path.append(coord)
         self.coord = coord
-        
-        
-    
-        
-    
-        
-        
-    
