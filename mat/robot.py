@@ -8,10 +8,11 @@ class Robot:
         self.myCoord = xyCoord
         self.myID = mID
         self.myPath.append(xyCoord)
+
         if mID == 0:
-            self.alive = isAlive
+            self.alive = True
     
-    def goto(xyCoord):
+    def goto(self, xyCoord):
         self.myPath.append(xyCoord)
         self.myCoord = xyCoord
         
