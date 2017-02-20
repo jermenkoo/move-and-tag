@@ -33,6 +33,11 @@ class World:
                 vertexes = list(ast.literal_eval(obstacle_str))
                 self.obstacles.append(Obstacle(idx, vertexes))
                 
+    def Gsolve(self):
+        #magic graph appears
+        G=nx.Graph()
+        
+                
     def Asolve(self):
         #sequentially go from robot 1 to 2, then 3, etc
         currentRobot = 0
