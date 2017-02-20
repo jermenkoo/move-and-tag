@@ -1,7 +1,9 @@
 from mat.robot import Robot
 from mat.obstacle import Obstacle
-from shapely.geometry import LineString, Polygon
+from shapely.geometry import LineString, Polygon, Point
+import networkx as nx
 import ast
+
 
 class World:
     def __init__(self, line):
@@ -33,6 +35,11 @@ class World:
                 vertexes = list(ast.literal_eval(obstacle_str))
                 self.obstacles.append(Obstacle(idx, vertexes))
                 
+    def Gsolve(self):
+        #magic graph appears
+        G=nx.Graph()
+        
+                
     def Asolve(self):
         #sequentially go from robot 1 to 2, then 3, etc
         currentRobot = 0
@@ -53,8 +60,6 @@ class World:
                 #go around obstacle
                 intersections = obstacle.intersection(path)
         return [start, end]
-                    
-            
 
     def solution(self):
         sol = '{}: '.format(self.id)
@@ -68,3 +73,21 @@ class World:
                 sol += '; '
 
         return sol
+
+    def graph(self):
+        G = nx.DiGraph()
+
+        # Add nodes
+        for r in self.robots:
+            G.add_node(r)
+
+        for r1 in self.robots:
+            for r2 in self.robots:
+                if r1 != r2:
+                    x0, y0 = r1.coord
+                    x1, y1 = r2.coord
+                    dist = Point(x0, y0).distance(Point(x1, y1))
+
+                    G.add_edge(r1, r2, {'weight': dist, 'path': []})
+
+        return G
