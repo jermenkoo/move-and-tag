@@ -13,6 +13,7 @@ if __name__ == '__main__':
 
     for line in inFile:
         world = World(line)
+        #if world.id == '14':
         world.Asolve()
         print(world.solution())
         outFile.write(world.solution() + '\n')
