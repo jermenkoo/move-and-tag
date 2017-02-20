@@ -7,6 +7,7 @@ import ast
 
 class World:
     def __init__(self, line):
+        self.depth = False
         self.id = None
         self.robots = []
         self.obstacles = []
@@ -15,6 +16,7 @@ class World:
         line = ''.join(line.split())
 
         self.id = line.split(':')[0]
+        print (self.id)
         robots_str = line.split(':')[1].split('#')[0]
         obstacles_str = None
 
@@ -39,46 +41,54 @@ class World:
         #magic graph appears
         G=nx.Graph()
         
-    def recGoAround(self, start, end):
+    def recGoAround(self, start, end, i):
+        if i > 2000:
+            print(self.id, 'depth exceeded')
+            self.depth = True
+            return []
+        if self.depth:
+            return []
         path = LineString([start, end])
+        #print('path', path)
         for obstacle in self.obstacles:
-            #print('path', path)
-            if path.crosses(obstacle):
-                print('crosses', obstacle)
+            if (path.crosses(obstacle) or path.within(obstacle)):
+                #print('crosses', obstacle)
                 #go around obstacle
                 #intersections = obstacle.intersection(path)
                 #print(intersections)
-                print(list(obstacle.exterior.coords))
+                #print(list(obstacle.exterior.coords))
                 #find point we can see A
                 pathA = LineString([start, obstacle.exterior.coords[0]])
                 edgeA = 0
-                while pathA.crosses(obstacle):
+                while pathA.crosses(obstacle) or pathA.within(obstacle):
                     edgeA += 1
                     pathA = LineString([start, obstacle.exterior.coords[edgeA]])
                     
-                print('edge can see A', edgeA)
+                #print('edge can see A', edgeA)
                 
                 #find point we can see B
                 pathB = LineString([end, obstacle.exterior.coords[0]])
                 edgeB = 0
-                while pathB.crosses(obstacle):
+                while pathB.crosses(obstacle) or pathB.within(obstacle):
                     edgeB += 1
                     pathB = LineString([end, obstacle.exterior.coords[edgeB]])
                     
-                print('edge can see B', edgeB)
+                #print('edge can see B', edgeB)
                 
                 #get edges on shape
-                edgeP = (edgeA) % len(obstacle.exterior.coords)
+                edgeP = edgeA
+                
                 parts = []
                 while edgeP != edgeB:
                     parts.append(obstacle.exterior.coords[edgeP])
                     edgeP = (edgeP + 1) % len(obstacle.exterior.coords)
                     
                 parts.append(obstacle.exterior.coords[edgeB])
-                print('parts', parts)
+                #print('parts', parts)
                     
-                
-                return self.recGoAround(start, obstacle.exterior.coords[edgeA]) + parts + self.recGoAround( obstacle.exterior.coords[edgeB], end)
+               
+                return self.recGoAround(start, obstacle.exterior.coords[edgeA], i+1) + parts + self.recGoAround( obstacle.exterior.coords[edgeB], end, i+1)
+               
                 
                 
                 #for item in intersections:
@@ -93,7 +103,8 @@ class World:
             start = self.robots[currentRobot].coord
             end = self.robots[currentRobot+1].coord
             self.robots[0].goto(start)
-            for position in self.recGoAround(start, end):
+            for position in self.recGoAround(start, end, 0):
+                #if position not in self.robots[0].path:
                 self.robots[0].goto(position)
             self.robots[0].goto(end)
             currentRobot += 1
@@ -105,11 +116,13 @@ class World:
 
         for robot in robots_moved:
             path_str = str(robot.path).replace('[', '').replace(']', '')
-            sol += path_str
+            #if len(path_str) < 800000:
+            if not self.depth:
+                sol += path_str
 
             if robot != robots_moved[-1]:
                 sol += '; '
-
+        
         return sol
 
     def graph(self):

@@ -6,6 +6,6 @@ class Robot:
         self.alive = True if (id == 0) else False
 
     def goto(self, coord):
-        #if coord != self.coord:
-        self.path.append(coord)
-        self.coord = coord
+        if coord != self.coord:
+            self.path.append(coord)
+            self.coord = coord
