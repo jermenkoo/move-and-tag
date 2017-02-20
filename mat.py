@@ -1,11 +1,11 @@
-import mat
+from mat.world import *
 
 if __name__ == '__main__':
     inFile = open('robots.mat', 'r')
-    outFile = open('out.mat', 'rw')
+    outFile = open('out.mat', 'w')
 
     for line in inFile:
-        pass
+        world = World(line)
 
     inFile.close()
     outFile.close()
