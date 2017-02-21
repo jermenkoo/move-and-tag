@@ -9,9 +9,7 @@ if __name__ == '__main__':
     for line in inFile:
 
         world = World(line)
-
-        if count == 3:
-            world.graph()
+        world.graph()
 
         print(world.solution())
         count += 1

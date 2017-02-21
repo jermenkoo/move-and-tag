@@ -2,6 +2,7 @@ from mat.robot import Robot
 from mat.obstacle import Obstacle
 from shapely.geometry import LineString, Polygon, Point
 import networkx as nx
+import matplotlib.pyplot as plt
 import ast
 
 
@@ -84,36 +85,75 @@ class World:
                 if r1 != r2:
                     x0, y0 = r1.coord
                     x1, y1 = r2.coord
-                    dist = Point(x0, y0).distance(Point(x1, y1))
-                    inter = self.intersecting_objs(r1.coord, r2.coord)
 
-                    #initialise point objects
-                    a = Point(x0, y0)
-                    b = Point(x1, y1)
+                    closest = self.closest_int_obst(r1.coord, r2.coord)
 
-                    closest = self.closest_int_obst(a, b)
-
-                    if closest:
-
-                        print('%d and %d have obstacles in between and it is %d' % (r1.id, r2.id, closest.id))
-
-
-                    G.add_edge(r1, r2, {'weight': dist, 'path': []})
-
+                    if not closest:
+                        dist = Point(x0, y0).distance(Point(x1, y1))
+                        G.add_edge(r1, r2, {'weight': dist, 'path': []})
+                    else:
+                        tempG = nx.Graph()
+                        self.construct_subGraph(r1.coord, r2.coord, tempG)
+                        self.construct_subGraph(r2.coord, r1.coord, tempG)
+                        path = nx.shortest_path(tempG, r1.coord, r2.coord, weight='weight')
         return G
 
 
+    def construct_subGraph(self, a, b, final):
+        closest = self.closest_int_obst(a, b)
+        #add both points
+        if (a not in final.nodes()):
+            final.add_node(a)
+
+        #if unobstructed, add direct edge
+        if not closest:
+            if (b not in final.nodes()):
+                final.add_node(b)
+            dist = Point(a).distance(Point(b))
+            final.add_edge(a,b,{'weight' : dist})
+
+        else:
+            a_no_self_obs = []
+            b_no_self_obs = []
+
+            obstacle_nodes = list(closest.exterior.coords)
+            for cl in obstacle_nodes:
+                if cl not in final.nodes():
+                    final.add_node(cl)
+                if not closest.crosses(cl, a):
+                    a_no_self_obs.append(cl)
+                if not closest.crosses(cl, b):
+                    b_no_self_obs.append(cl)
+
+            for i in range(len(obstacle_nodes)):
+                n1 = obstacle_nodes[i]
+                n2 = obstacle_nodes[(i+1)%len(obstacle_nodes)]
+                dist = Point(n1).distance(Point(n2))
+                final.add_edge(n1, n2, {'weight' : dist})
+
+            for a_no in a_no_self_obs:
+                dist = Point(a).distance(Point(a_no))
+                final.add_edge(a, a_no, {'weight' : dist})
+
+            min_node = b_no_self_obs[0]
+            min_dist = dist = Point(min_node).distance(Point(b))
+            for b_no in b_no_self_obs:
+                dist = Point(b_no).distance(Point(b))
+                if dist < min_dist:
+                    min_node = b_no
+                    min_dist = dist
+
+
+            self.construct_subGraph(min_node, b, final)
 
 
 
     def intersecting_objs(self, a, b):
 
         intersecting = []
-        a_tupl = a.coords
-        b_tupl = b.coords
 
         for obst in self.obstacles:
-            if obst.crosses(a_tupl, b_tupl):
+            if obst.crosses(a, b):
                 intersecting.append(obst)
 
         return intersecting
@@ -130,12 +170,12 @@ class World:
 
         #initial min distance
         closest = int_list[0]
-        min_dist = a.distance(closest)
+        min_dist = Point(a).distance(closest)
 
         #loop through all to find the actual closest
         for obst in int_list:
-            if a.distance(obst) < min_dist:
-                min_dist = a.distance(obst)
+            if Point(a).distance(obst) < min_dist:
+                min_dist = Point(a).distance(obst)
                 closest = obst
 
 
