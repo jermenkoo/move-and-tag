@@ -211,7 +211,10 @@ class World:
         for r in self.robots:
             G.add_node(r)
 
+        print('# robots: {}'.format(len(self.robots)))
+
         for r1 in self.robots:
+            print('Outer robot: {}'.format(r1.id))
             for r2 in self.robots:
                 if r1 != r2:
                     path = self.fullPath(r1.coord, r2.coord)
