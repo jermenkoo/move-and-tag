@@ -4,6 +4,8 @@ from shapely.geometry import LineString, Polygon, Point
 import networkx as nx
 import ast
 
+from shapely import speedups
+speedups.enable()
 
 class World:
     def __init__(self, line):
@@ -55,6 +57,19 @@ class World:
                 break
             i+=1
         return parts
+    
+    def super_clean_hops(self, parts):
+        i = 0
+        while i < len(parts):
+            j = 0
+            while j < i:
+                if j + 1 < i and len(self.obstructions(LineString([parts[j], parts[i]]))) == 0:
+                    parts = parts[0:j+1] + parts[i:]
+                    i=j
+                j+=1
+            i+=1           
+        return parts
+            
 
     def border(self, obj, vertexA, vertexB, clockwise=1):
         vertexP = vertexA
@@ -136,8 +151,10 @@ class World:
                             
             end = min_robot.coord
             self.robots[0].goto(start)
+            path = [start] + self.recGoAround(start, end) + [end]
+            path = self.super_clean_hops(path)
             
-            for position in self.clean_hops(self.recGoAround(start, end)):
+            for position in path:
                 #if position not in self.robots[0].path:
                 self.robots[0].goto(position)
             self.robots[0].goto(end)
