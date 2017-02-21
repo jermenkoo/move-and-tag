@@ -4,6 +4,9 @@ from shapely.geometry import LineString, Polygon, Point
 import networkx as nx
 import ast
 
+
+from multiprocessing import Pool
+
 from shapely import speedups
 speedups.enable()
 
@@ -213,13 +216,19 @@ class World:
 
         print('# robots: {}'.format(len(self.robots)))
 
+        #with Pool(4) as p:
         for r1 in self.robots:
-            print('Outer robot: {}'.format(r1.id))
+            print('ID', self.id, 'Outer robot: {}'.format(r1.id))
+            '''edges = list(filter(lambda x: x.id < r1.id, self.robots))
+            paths = p.map(lambda x: self.fullPath(r1.coord, x), edges)
+            for i in range(len(edges)):
+                dist = LineString(paths[i]).length
+                G.add_edge(r1, edges[i], {'weight': dist, 'path': paths[i]})'''
+                
             for r2 in self.robots:
-                if r1 != r2:
+                if r1.id < r2.id:
                     path = self.fullPath(r1.coord, r2.coord)
                     dist = LineString(path).length
-
                     G.add_edge(r1, r2, {'weight': dist, 'path': path})
 
         return G
