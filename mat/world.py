@@ -2,6 +2,7 @@ from mat.robot import Robot
 from mat.obstacle import Obstacle
 from shapely.geometry import LineString, Polygon, Point
 import networkx as nx
+import matplotlib.pyplot as plt
 import ast
 
 
@@ -97,12 +98,27 @@ class World:
         #goto closest robot
         wakened_robots = 1
         currentRobot = self.robots[0]
-        #route = []
+
+        #initialise a new graph and add robots as nodes
+        G = nx.Graph()
+        for r in self.robots:
+            G.add_node(r)
+
+        pos = {}
+        for n in G.nodes():
+            pos[n] = n.coord
+
+
+
+
+        #while some not awake
         while wakened_robots < len(self.robots):
             start = currentRobot.coord
+
             #first find closest with no obstacle
             min_dist = 100000000000000
             min_robot = None
+
             for robot in self.robots:
                 if robot.coord != currentRobot.coord:
                     if not robot.alive:
@@ -111,15 +127,19 @@ class World:
                         for obstacle in self.obstacles:
                             if (path.crosses(obstacle) or path.within(obstacle)):
                                 direct = False
-                        if direct:                        
+                        #if unobstructed
+                        if direct:
                             dist = ((robot.coord[0] - currentRobot.coord[0])**2 + (robot.coord[1] - currentRobot.coord[1])**2) ** 0.5
                             if dist < min_dist:
                                 min_dist = dist
                                 min_robot = robot  
-            
+
+            #if all obstructed
             if min_robot == None:
                 min_dist = 100000000000000
                 min_robot = None
+
+                #pick closest obstructed
                 for robot in self.robots:
                     if robot.coord != currentRobot.coord:
                         if not robot.alive:
@@ -127,8 +147,14 @@ class World:
                             if dist < min_dist:
                                 min_dist = dist
                                 min_robot = robot      
-                            
+
+
+            #once got closest - move there through path
             end = min_robot.coord
+
+            line = LineString(self.recGoAround(start, end))
+            G.add_edge(currentRobot, min_robot, {'weight': line.length, 'path': self.recGoAround(start, end)})
+
             self.robots[0].goto(start)
             for position in self.recGoAround(start, end):
                 #if position not in self.robots[0].path:
@@ -137,6 +163,12 @@ class World:
             min_robot.alive = True
             currentRobot = min_robot    
             wakened_robots += 1
+
+
+        nx.draw(G, pos)
+        plt.show()
+
+
 
     def solution(self):
         sol = '{}: '.format(self.id)
