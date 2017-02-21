@@ -36,83 +36,63 @@ class World:
             for idx, obstacle_str in enumerate(obstacles_str.split(';')):
                 vertexes = list(ast.literal_eval(obstacle_str))
                 self.obstacles.append(Obstacle(idx, vertexes))
-                
-    def Gsolve(self):
-        #magic graph appears
-        G=nx.Graph()
-        
-    def closestEdge(self, start, obstacle):
-        #pathA = LineString([start, obstacle.exterior.coords[0]])
-        min_path = 100000000000000
-        min_edge = 0
-        for i in range(len(obstacle.exterior.coords)):
-            pathA = LineString([start, obstacle.exterior.coords[i]])
-            #print(i, pathA, obstacle, 'fight')
-            if not pathA.crosses(obstacle) and not pathA.within(obstacle) and pathA.length < min_path:
-            #print(i, pathA, pathA.length, min_path, min_edge)
-            #if pathA.length < min_path:
-                min_path = pathA.length
-                min_edge = i
-        return min_edge
-                    
-        
-    def recGoAround(self, start, end, i):
-        if i > 500:
-            print(self.id, 'depth exceeded')
-            self.depth = True
-            return []
-        if self.depth:
-            return []
+
+    def closestVertex(self, start, obstacle):
+        paths = map(lambda vertex: (vertex[0], LineString([start, vertex[1]])), enumerate(obstacle.exterior.coords))
+        unobstructed_paths = filter(lambda x: not(x[1].crosses(obstacle) or x[1].within(obstacle)), paths)
+        closest = min(unobstructed_paths, key=(lambda x: x[1].length))
+        return closest[0]
+
+    def obstructions(self, path):
+        return list(filter(lambda obs: path.crosses(obs) or path.within(obs), self.obstacles))
+
+    def border(self, obj, vertexA, vertexB, clockwise=1):
+        vertexP = vertexA
+        parts = []
+
+        while vertexP != vertexB:
+            # vertex = vertexB
+            # while vertex != vertexP:
+            #     testPath = LineString([obj.exterior.coords[vertexP], obj.exterior.coords[vertex]])
+            #     if len(self.obstructions(testPath)) == 0:
+            #         vertexP = vertex
+            #     vertex -= 1
+
+            parts.append(obj.exterior.coords[vertexP])
+            vertexP = (vertexP + clockwise) % len(obj.exterior.coords)
+
+        parts.append(obj.exterior.coords[vertexB])
+
+        return parts
+
+    def shortest_border(self, obj, A, B):
+        if A == B:
+            return [obj.exterior.coords[A]]
+
+        a_to_b = self.border(obj, A, B)
+        b_to_a = self.border(obj, A, B, clockwise=-1)
+
+        if LineString(a_to_b).length < LineString(b_to_a).length:
+            return a_to_b
+        else:
+            return b_to_a
+
+    def recGoAround(self, start, end):
         path = LineString([start, end])
-        #print('path', path)
-        for obstacle in self.obstacles:
-            if (path.crosses(obstacle) or path.within(obstacle)):
-                #print('crosses', obstacle)
-                #go around obstacle
-                #intersections = obstacle.intersection(path)
-                #print(intersections)
-                #print(list(obstacle.exterior.coords))
-                #find point we can see A
-                '''
-                pathA = LineString([start, obstacle.exterior.coords[0]])
-                edgeA = 0
-                while pathA.crosses(obstacle) or pathA.within(obstacle):
-                    edgeA += 1
-                    pathA = LineString([start, obstacle.exterior.coords[edgeA]])'''
-                edgeA = self.closestEdge(start, obstacle)
-                    
-                #print('edge can see A', edgeA)
-                
-                #find point we can see B
-                ''' pathB = LineString([end, obstacle.exterior.coords[0]])
-                edgeB = 0
-                while pathB.crosses(obstacle) or pathB.within(obstacle):
-                    edgeB += 1
-                    pathB = LineString([end, obstacle.exterior.coords[edgeB]])'''
-                    
-                edgeB = self.closestEdge(end, obstacle)
-                #print('edge can see B', edgeB)
-                
-                #get edges on shape
-                edgeP = edgeA
-                
-                parts = []
-                while edgeP != edgeB:
-                    parts.append(obstacle.exterior.coords[edgeP])
-                    edgeP = (edgeP + 1) % len(obstacle.exterior.coords)
-                    
-                parts.append(obstacle.exterior.coords[edgeB])
-                #print('parts', parts)
-                    
-               
-                return self.recGoAround(start, obstacle.exterior.coords[edgeA], i+1) + parts + self.recGoAround( obstacle.exterior.coords[edgeB], end, i+1)
-               
-                
-                
-                #for item in intersections:
-                #    print(list(item.coords))
-        return []
-                
+        obstructions = self.obstructions(path)
+
+        if len(obstructions) == 0:
+            return []
+
+        else:
+            for obs in obstructions:
+                vertexA = self.closestVertex(start, obs)
+                vertexB = self.closestVertex(end, obs)
+
+                return self.recGoAround(start, obs.exterior.coords[vertexA]) + \
+                       self.shortest_border(obs, vertexA, vertexB) + \
+                       self.recGoAround(obs.exterior.coords[vertexB], end)
+
     def Asolve(self):
         #goto closest robot
         wakened_robots = 1
@@ -150,14 +130,13 @@ class World:
                             
             end = min_robot.coord
             self.robots[0].goto(start)
-            for position in self.recGoAround(start, end, 0):
+            for position in self.recGoAround(start, end):
                 #if position not in self.robots[0].path:
                 self.robots[0].goto(position)
             self.robots[0].goto(end)
             min_robot.alive = True
             currentRobot = min_robot    
             wakened_robots += 1
-            #route = route + recGoAround(start, end);
 
     def solution(self):
         sol = '{}: '.format(self.id)
@@ -165,8 +144,6 @@ class World:
 
         for robot in robots_moved:
             path_str = str(robot.path).replace('[', '').replace(']', '')
-            #if len(path_str) < 800000:
-            #if not self.depth:
             sol += path_str
 
             if robot != robots_moved[-1]:
