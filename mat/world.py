@@ -45,21 +45,27 @@ class World:
 
     def obstructions(self, path):
         return list(filter(lambda obs: path.crosses(obs) or path.within(obs), self.obstacles))
+    
+    #remove hops if previous and next node can see each other
+    def clean_hops(self, parts):
+        i = 0
+        while i < len(parts):
+            if 0 == len(self.obstructions(LineString([parts[i], parts[-1]]))):
+                parts = parts[0:i+1] + [parts[-1]]
+                break
+            i+=1
+        return parts
 
     def border(self, obj, vertexA, vertexB, clockwise=1):
         vertexP = vertexA
         parts = []
 
-        while vertexP != vertexB:
-            # vertex = vertexB
-            # while vertex != vertexP:
-            #     testPath = LineString([obj.exterior.coords[vertexP], obj.exterior.coords[vertex]])
-            #     if len(self.obstructions(testPath)) == 0:
-            #         vertexP = vertex
-            #     vertex -= 1
-
-            parts.append(obj.exterior.coords[vertexP])
+        while vertexP != vertexB:            
+            #look back            
+            parts.append(obj.exterior.coords[vertexP])   
+            parts = self.clean_hops(parts)                 
             vertexP = (vertexP + clockwise) % len(obj.exterior.coords)
+            
 
         parts.append(obj.exterior.coords[vertexB])
 
@@ -130,7 +136,8 @@ class World:
                             
             end = min_robot.coord
             self.robots[0].goto(start)
-            for position in self.recGoAround(start, end):
+            
+            for position in self.clean_hops(self.recGoAround(start, end)):
                 #if position not in self.robots[0].path:
                 self.robots[0].goto(position)
             self.robots[0].goto(end)
