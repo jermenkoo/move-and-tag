@@ -177,48 +177,32 @@ class World:
                 sol += '; '
         
         return sol
-    
+
+    def aliveRobots(self):
+        return list(filter(lambda x: x.alive, self.robots))
+
+    def asleepRobots(self):
+        return list(filter(lambda x: not x.alive, self.robots))
+
     def AGraphSolve(self, G):
-        #print(G.nodes())
-        while len(list(filter(lambda x: not x.alive, self.robots))) != 0:
-            for robot in list(filter(lambda x: x.alive, self.robots)):
-                #get location in graph, goto closest neighbor which is asleep
-                myNode = next(x for x in G.nodes() if x.coord == robot.coord)
-                
-                #print('g[mynode]', G[myNode])
-                min_edge_w = 100000000000000
-                min_edge = []
-                
-                for edge in G[myNode]:
-                    #print(edge)
-                    #print(G[myNode][edge])
-                    if G[myNode][edge]['weight'] < min_edge_w:
-                        min_edge_w = G[myNode][edge]['weight']
-                        min_edge = edge
-                        
-                path = G[myNode][min_edge]['path']
-                edge.alive = True
-                        
-                
-                #edges = filter(lambda x: not x.alive, G[myNode])
-                #print(list(edges))
-                
-                #closest = min(edges, key=lambda x: 
-                
-                
-                #edge = min(filter(lambda x: not x.alive, G[myNode]), key=lambda x:G.get_edge_data(robot, x)['weight'])
-                
-                #print(edge)
-                           
-                for location in path:
-                    robot.goto(location)
-                #print (G[myNode])
-                
-                #print (myNode)
-                #None
-                
-            
-        
+        while len(self.asleepRobots()) != 0:
+            for robot in self.aliveRobots():
+                node = next(x for x in G.nodes() if x.original_coord == robot.coord)
+                out_edges = list(filter(lambda x: not x[0].alive, list(G[node].items())))
+
+                if len(out_edges) == 0:
+                    break
+
+                closest = min(out_edges, key=lambda x: x[1]['weight'])
+                closest[0].alive = True
+
+                path_taken = closest[1]['path']
+                if path_taken[0] != robot.coord:
+                    path_taken.reverse()
+
+                for coord in closest[1]['path']:
+                    robot.goto(coord)
+
 
     def graph(self):
         G = nx.Graph()
