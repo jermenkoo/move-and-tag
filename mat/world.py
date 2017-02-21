@@ -114,6 +114,9 @@ class World:
                        self.shortest_border(obs, vertexA, vertexB) + \
                        self.recGoAround(obs.exterior.coords[vertexB], end)
 
+    def fullPath(self, start, end):
+        return [start] + self.recGoAround(start, end) + [end]
+
     def Asolve(self):
         #goto closest robot
         wakened_robots = 1
@@ -185,10 +188,9 @@ class World:
         for r1 in self.robots:
             for r2 in self.robots:
                 if r1 != r2:
-                    x0, y0 = r1.coord
-                    x1, y1 = r2.coord
-                    dist = Point(x0, y0).distance(Point(x1, y1))
+                    path = self.fullPath(r1.coord, r2.coord)
+                    dist = LineString(path).length
 
-                    G.add_edge(r1, r2, {'weight': dist, 'path': []})
+                    G.add_edge(r1, r2, {'weight': dist, 'path': path})
 
         return G
