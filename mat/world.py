@@ -1,6 +1,7 @@
 from mat.robot import Robot
 from mat.obstacle import Obstacle
 from shapely.geometry import LineString, Polygon, Point
+import pyvisgraph as vg
 import networkx as nx
 import ast
 
@@ -8,7 +9,7 @@ import ast
 from multiprocessing import Pool
 
 from shapely import speedups
-speedups.enable()
+# speedups.enable()
 
 class World:
     def __init__(self, line):
@@ -16,6 +17,7 @@ class World:
         self.id = None
         self.robots = []
         self.obstacles = []
+        self.vis = None
 
         # Strip whitespace for convenience
         line = ''.join(line.split())
@@ -42,6 +44,17 @@ class World:
                 vertexes = list(ast.literal_eval(obstacle_str))
                 self.obstacles.append(Obstacle(idx, vertexes))
 
+    def visibilityGraph(self):
+        polys = map(lambda x: x.vg_poly, self.obstacles)
+        g = vg.VisGraph()
+        g.build(polys, workers=8)
+
+        # This probably actually makes it slower
+        # robots_coords = list(map(lambda r: r.vg_coord, self.robots))
+        # g.update(robots_coords)
+
+        self.vis = g
+
     def closestVertex(self, start, obstacle):
         paths = map(lambda vertex: (vertex[0], LineString([start, vertex[1]])), enumerate(obstacle.exterior.coords))
         unobstructed_paths = filter(lambda x: not(x[1].crosses(obstacle) or x[1].within(obstacle)), paths)
@@ -50,18 +63,8 @@ class World:
 
     def obstructions(self, path):
         return list(filter(lambda obs: path.crosses(obs) or path.within(obs), self.obstacles))
-    
-    #remove hops if previous and next node can see each other
+
     def clean_hops(self, parts):
-        i = 0
-        while i < len(parts):
-            if 0 == len(self.obstructions(LineString([parts[i], parts[-1]]))):
-                parts = parts[0:i+1] + [parts[-1]]
-                break
-            i+=1
-        return parts
-    
-    def super_clean_hops(self, parts):
         i = 0
         while i < len(parts):
             j = 0
@@ -72,22 +75,20 @@ class World:
                 j+=1
             i+=1           
         return parts
-            
 
     def border(self, obj, vertexA, vertexB, clockwise=1):
         vertexP = vertexA
         parts = []
 
         while vertexP != vertexB:            
-            #look back            
+            # look back
             parts.append(obj.exterior.coords[vertexP])   
-            parts = self.clean_hops(parts)                 
+            # parts = self.clean_hops(parts)
             vertexP = (vertexP + clockwise) % len(obj.exterior.coords)
-            
 
         parts.append(obj.exterior.coords[vertexB])
 
-        return parts
+        return self.clean_hops(parts)
 
     def shortest_border(self, obj, A, B):
         if A == B:
@@ -118,55 +119,7 @@ class World:
                        self.recGoAround(obs.exterior.coords[vertexB], end)
 
     def fullPath(self, start, end):
-        return self.super_clean_hops([start] + self.recGoAround(start, end) + [end])
-
-    def Asolve(self):
-        #goto closest robot
-        wakened_robots = 1
-        currentRobot = self.robots[0]
-        #route = []
-        while wakened_robots < len(self.robots):
-            start = currentRobot.coord
-            #first find closest with no obstacle
-            min_dist = 100000000000000
-            min_robot = None
-            for robot in self.robots:
-                if robot.coord != currentRobot.coord:
-                    if not robot.alive:
-                        path = LineString([currentRobot.coord, robot.coord])
-                        direct = True
-                        for obstacle in self.obstacles:
-                            if (path.crosses(obstacle) or path.within(obstacle)):
-                                direct = False
-                        if direct:                        
-                            dist = ((robot.coord[0] - currentRobot.coord[0])**2 + (robot.coord[1] - currentRobot.coord[1])**2) ** 0.5
-                            if dist < min_dist:
-                                min_dist = dist
-                                min_robot = robot  
-            
-            if min_robot == None:
-                min_dist = 100000000000000
-                min_robot = None
-                for robot in self.robots:
-                    if robot.coord != currentRobot.coord:
-                        if not robot.alive:
-                            dist = ((robot.coord[0] - currentRobot.coord[0])**2 + (robot.coord[1] - currentRobot.coord[1])**2) ** 0.5
-                            if dist < min_dist:
-                                min_dist = dist
-                                min_robot = robot      
-                            
-            end = min_robot.coord
-            self.robots[0].goto(start)
-            path = [start] + self.recGoAround(start, end) + [end]
-            path = self.super_clean_hops(path)
-            
-            for position in path:
-                #if position not in self.robots[0].path:
-                self.robots[0].goto(position)
-            self.robots[0].goto(end)
-            min_robot.alive = True
-            currentRobot = min_robot    
-            wakened_robots += 1
+        return self.clean_hops([start] + self.recGoAround(start, end) + [end])
 
     def solution(self):
         sol = '{}: '.format(self.id)
@@ -206,7 +159,6 @@ class World:
                 for coord in closest[1]['path']:
                     robot.goto(coord)
 
-
     def graph(self):
         G = nx.Graph()
 
@@ -216,18 +168,14 @@ class World:
 
         print('# robots: {}'.format(len(self.robots)))
 
-        #with Pool(4) as p:
         for r1 in self.robots:
-            print('ID', self.id, 'Outer robot: {}'.format(r1.id))
-            '''edges = list(filter(lambda x: x.id < r1.id, self.robots))
-            paths = p.map(lambda x: self.fullPath(r1.coord, x), edges)
-            for i in range(len(edges)):
-                dist = LineString(paths[i]).length
-                G.add_edge(r1, edges[i], {'weight': dist, 'path': paths[i]})'''
-                
+            print('ID', self.id, 'Outer robot: {} out of {}'.format(r1.id, len(self.robots)))
             for r2 in self.robots:
                 if r1.id < r2.id:
-                    path = self.fullPath(r1.coord, r2.coord)
+                    # path = self.fullPath(r1.coord, r2.coord)
+                    vg_path = self.vis.shortest_path(vg.Point(*r1.coord), vg.Point(*r2.coord))
+                    path = list(map(lambda co: (co.x, co.y), vg_path))
+
                     dist = LineString(path).length
                     G.add_edge(r1, r2, {'weight': dist, 'path': path})
 

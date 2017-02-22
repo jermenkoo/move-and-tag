@@ -1,2 +1,3 @@
+pyvisgraph
 shapely
 networkx
