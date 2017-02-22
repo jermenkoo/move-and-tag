@@ -63,14 +63,32 @@ class World:
     
     def super_clean_hops(self, parts):
         i = 0
+        #chop out uneeded bits
         while i < len(parts):
             j = 0
             while j < i:
                 if j + 1 < i and len(self.obstructions(LineString([parts[j], parts[i]]))) == 0:
+                    #print('chopping')
                     parts = parts[0:j+1] + parts[i:]
                     i=j
                 j+=1
-            i+=1           
+            i+=1 
+    
+        i = 0    
+        #try recsolve on each sub section
+        '''while i < len(parts):
+            j = 0
+            while j + 1< i:
+                baseline = LineString(parts[j:i]).length
+                newln = [parts[j]] + self.recGoAround(parts[j], parts[i]) + [parts[i]]
+                
+                if LineString(newln).length < baseline: 
+                    print('baseline', baseline, 'new', LineString(newln).length)
+                    print('shorter')
+                    parts = parts[0:j+1] + newln + parts[i:]
+                    i=j
+                j+=1
+            i+=1'''
         return parts
             
 
@@ -101,24 +119,39 @@ class World:
         else:
             return b_to_a
 
-    def recGoAround(self, start, end):
+    def recGoAround(self, start, end, rec_depth):
         path = LineString([start, end])
         obstructions = self.obstructions(path)
+        
 
         if len(obstructions) == 0:
             return []
+        
+        
 
         else:
+            tries = []
             for obs in obstructions:
                 vertexA = self.closestVertex(start, obs)
                 vertexB = self.closestVertex(end, obs)
 
-                return self.recGoAround(start, obs.exterior.coords[vertexA]) + \
+                return(self.recGoAround(start, obs.exterior.coords[vertexA], rec_depth+1) + \
                        self.shortest_border(obs, vertexA, vertexB) + \
-                       self.recGoAround(obs.exterior.coords[vertexB], end)
+                       self.recGoAround(obs.exterior.coords[vertexB], end, rec_depth+1))
+            if(len(tries[0]) < 2):
+                return tries[0]
+            min_try = 0
+            min_cost = LineString(tries[0]).length
+            for i in range(1, len(tries)):
+                if LineString(tries[i]).length < min_cost:
+                    #print('found cheaper')
+                    min_cost = LineString(tries[i]).length
+                    min_try = i
+            #print(rec_depth)
+            return tries[min_try]
 
     def fullPath(self, start, end):
-        return self.super_clean_hops([start] + self.recGoAround(start, end) + [end])
+        return self.super_clean_hops([start] + self.recGoAround(start, end,0) + [end])
 
     def Asolve(self):
         #goto closest robot
@@ -186,10 +219,41 @@ class World:
 
     def asleepRobots(self):
         return list(filter(lambda x: not x.alive, self.robots))
+    
+    def goto_closest(self, robot, G):
+        node = next(x for x in G.nodes() if x.original_coord == robot.coord)
+        out_edges = list(filter(lambda x: not x[0].alive, list(G[node].items())))
+        return min(out_edges, key=lambda x: x[1]['weight'])
+        
+
 
     def AGraphSolve(self, G):
         while len(self.asleepRobots()) != 0:
+            min_cost = float('inf')
+            min_path = None
+            min_robot = None
             for robot in self.aliveRobots():
+                if self.goto_closest(robot, G)[1]['weight'] + robot.time < min_cost:
+                    min_path = self.goto_closest(robot, G)
+                    min_cost = min_path[1]['weight'] + robot.time
+                    min_robot = robot
+            min_robot.time += min_path[1]['weight']
+            min_path[0].alive = True
+            min_path[0].time = min_robot.time
+            path_taken = min_path[1]['path']
+            if path_taken[0] != min_robot.coord:
+                path_taken.reverse()
+
+            for coord in path_taken:
+                min_robot.goto(coord)
+                    
+    '''def 
+                    
+    def BruteGraphSolve(self, G, awakerobots, asleeprobots):
+        if len(asleeprobots == 0):
+            return 
+        
+        for robot in awakerobots:
                 node = next(x for x in G.nodes() if x.original_coord == robot.coord)
                 out_edges = list(filter(lambda x: not x[0].alive, list(G[node].items())))
 
@@ -205,6 +269,10 @@ class World:
 
                 for coord in closest[1]['path']:
                     robot.goto(coord)
+    
+    def BruteStart(self, G):
+        BruteGraphSolve(self, G, [copy.deepcopy(self.robots[0])], copy.deepcopy(self.asleepRobots(self)))'''
+        
 
 
     def graph(self):
@@ -216,19 +284,13 @@ class World:
 
         print('# robots: {}'.format(len(self.robots)))
 
-        #with Pool(4) as p:
         for r1 in self.robots:
             print('ID', self.id, 'Outer robot: {}'.format(r1.id))
-            '''edges = list(filter(lambda x: x.id < r1.id, self.robots))
-            paths = p.map(lambda x: self.fullPath(r1.coord, x), edges)
-            for i in range(len(edges)):
-                dist = LineString(paths[i]).length
-                G.add_edge(r1, edges[i], {'weight': dist, 'path': paths[i]})'''
-                
             for r2 in self.robots:
                 if r1.id < r2.id:
                     path = self.fullPath(r1.coord, r2.coord)
                     dist = LineString(path).length
+
                     G.add_edge(r1, r2, {'weight': dist, 'path': path})
 
         return G

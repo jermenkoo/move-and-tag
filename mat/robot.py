@@ -5,6 +5,7 @@ class Robot:
         self.coord = coord
         self.path = [coord]
         self.alive = True if (id == 0) else False
+        self.time = 0
 
     def goto(self, coord):
         if coord != self.coord:
