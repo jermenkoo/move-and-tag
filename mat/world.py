@@ -157,8 +157,8 @@ class World:
         return list(filter(lambda x: not x.alive, self.robots))
 
     def goto_closest(self, robot, G):
-        node = next(x for x in G.nodes() if x.original_coord == robot.coord)
-        out_edges = list(filter(lambda x: not x[0].alive, list(G[node].items())))
+        node = next(x for x in G.nodes() if self.robots[x].original_coord == robot.coord)
+        out_edges = list(filter(lambda x: not self.robots[x[0]].alive, list(G[node].items())))
         return min(out_edges, key=lambda x: x[1]['weight'])
 
 
@@ -173,8 +173,10 @@ class World:
                     min_cost = min_path[1]['weight'] + robot.time
                     min_robot = robot
             min_robot.time += min_path[1]['weight']
-            min_path[0].alive = True
-            min_path[0].time = min_robot.time
+            min_path_robot = self.robots[min_path[0]]
+            
+            min_path_robot.alive = True
+            min_path_robot.time = min_robot.time
             path_taken = min_path[1]['path']
             if path_taken[0] != min_robot.coord:
                 path_taken.reverse()
@@ -188,7 +190,7 @@ class World:
 
         # Add nodes
         for r in self.robots:
-            G.add_node(r)
+            G.add_node(r.id)
 
         print('# robots: {}'.format(len(self.robots)))
 
@@ -201,6 +203,6 @@ class World:
                     path = list(map(lambda co: (co.x, co.y), vg_path))
 
                     dist = LineString(path).length
-                    G.add_edge(r1, r2, {'weight': dist, 'path': path})
+                    G.add_edge(r1.id, r2.id, {'weight': dist, 'path': path})
 
         return G
