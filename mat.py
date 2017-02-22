@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     result = None
     with Pool(8) as p:
-        result = p.map(solveLine, inFile.readlines()[:6])
+        result = p.map(solveLine, inFile.readlines())
         for line in result:
             outFile.write(line + '\n')
 

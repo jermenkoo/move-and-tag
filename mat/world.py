@@ -180,6 +180,7 @@ class World:
                 path_taken.reverse()
 
             for coord in path_taken:
+                min_robot.goto(coord)
 
 
     def graph(self):
