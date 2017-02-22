@@ -9,7 +9,7 @@ import ast
 from multiprocessing import Pool
 
 from shapely import speedups
-# speedups.enable()
+speedups.enable()
 
 class World:
     def __init__(self, line):
@@ -63,7 +63,8 @@ class World:
 
     def obstructions(self, path):
         return list(filter(lambda obs: path.crosses(obs) or path.within(obs), self.obstacles))
-
+    
+    #remove hops if previous and next node can see each other
     def clean_hops(self, parts):
         i = 0
         while i < len(parts):
@@ -73,8 +74,11 @@ class World:
                     parts = parts[0:j+1] + parts[i:]
                     i=j
                 j+=1
-            i+=1           
+            i+=1
+
+        i = 0
         return parts
+            
 
     def border(self, obj, vertexA, vertexB, clockwise=1):
         vertexP = vertexA
@@ -83,8 +87,8 @@ class World:
         while vertexP != vertexB:            
             # look back
             parts.append(obj.exterior.coords[vertexP])   
-            # parts = self.clean_hops(parts)
             vertexP = (vertexP + clockwise) % len(obj.exterior.coords)
+            
 
         parts.append(obj.exterior.coords[vertexB])
 
@@ -102,7 +106,7 @@ class World:
         else:
             return b_to_a
 
-    def recGoAround(self, start, end):
+    def recGoAround(self, start, end, rec_depth):
         path = LineString([start, end])
         obstructions = self.obstructions(path)
 
@@ -110,16 +114,28 @@ class World:
             return []
 
         else:
+            tries = []
             for obs in obstructions:
                 vertexA = self.closestVertex(start, obs)
                 vertexB = self.closestVertex(end, obs)
 
-                return self.recGoAround(start, obs.exterior.coords[vertexA]) + \
+                return(self.recGoAround(start, obs.exterior.coords[vertexA], rec_depth+1) + \
                        self.shortest_border(obs, vertexA, vertexB) + \
-                       self.recGoAround(obs.exterior.coords[vertexB], end)
+                       self.recGoAround(obs.exterior.coords[vertexB], end, rec_depth+1))
+            if(len(tries[0]) < 2):
+                return tries[0]
+            min_try = 0
+            min_cost = LineString(tries[0]).length
+            for i in range(1, len(tries)):
+                if LineString(tries[i]).length < min_cost:
+                    #print('found cheaper')
+                    min_cost = LineString(tries[i]).length
+                    min_try = i
+            #print(rec_depth)
+            return tries[min_try]
 
     def fullPath(self, start, end):
-        return self.clean_hops([start] + self.recGoAround(start, end) + [end])
+        return self.clean_hops([start] + self.recGoAround(start, end,0) + [end])
 
     def solution(self):
         sol = '{}: '.format(self.id)
@@ -140,24 +156,31 @@ class World:
     def asleepRobots(self):
         return list(filter(lambda x: not x.alive, self.robots))
 
+    def goto_closest(self, robot, G):
+        node = next(x for x in G.nodes() if x.original_coord == robot.coord)
+        out_edges = list(filter(lambda x: not x[0].alive, list(G[node].items())))
+        return min(out_edges, key=lambda x: x[1]['weight'])
+
+
     def AGraphSolve(self, G):
         while len(self.asleepRobots()) != 0:
+            min_cost = float('inf')
+            min_path = None
+            min_robot = None
             for robot in self.aliveRobots():
-                node = next(x for x in G.nodes() if x.original_coord == robot.coord)
-                out_edges = list(filter(lambda x: not x[0].alive, list(G[node].items())))
+                if self.goto_closest(robot, G)[1]['weight'] + robot.time < min_cost:
+                    min_path = self.goto_closest(robot, G)
+                    min_cost = min_path[1]['weight'] + robot.time
+                    min_robot = robot
+            min_robot.time += min_path[1]['weight']
+            min_path[0].alive = True
+            min_path[0].time = min_robot.time
+            path_taken = min_path[1]['path']
+            if path_taken[0] != min_robot.coord:
+                path_taken.reverse()
 
-                if len(out_edges) == 0:
-                    break
+            for coord in path_taken:
 
-                closest = min(out_edges, key=lambda x: x[1]['weight'])
-                closest[0].alive = True
-
-                path_taken = closest[1]['path']
-                if path_taken[0] != robot.coord:
-                    path_taken.reverse()
-
-                for coord in closest[1]['path']:
-                    robot.goto(coord)
 
     def graph(self):
         G = nx.Graph()
