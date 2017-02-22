@@ -10,12 +10,16 @@ from multiprocessing import Pool
 from shapely import speedups
 speedups.enable()
 
+#DCMST
+from mat.networkx_IncreasingCostMST_Generator import IncreasingMST, getGraphCost
+
 class World:
     def __init__(self, line):
         self.depth = False
         self.id = None
         self.robots = []
         self.obstacles = []
+        self.nxG = None
 
         # Strip whitespace for convenience
         line = ''.join(line.split())
@@ -246,6 +250,21 @@ class World:
 
             for coord in path_taken:
                 min_robot.goto(coord)
+                
+    def MSTSolve(self, G):
+        iMST = IncreasingMST(G)
+        print ('Edges sorted by weight')
+        for i, edge in enumerate(iMST.edges, 1):
+            print (i, edge)
+    
+        print ('\nMinimum Spanning trees in order of increasing cost:')
+    
+        for tree in iMST.mst_iter():
+            #print (iMST.getEdges(G))
+            print ('Cost =', getGraphCost(tree))
+            print (' ')
+        
+        print('done')
                     
     '''def 
                     
@@ -291,6 +310,8 @@ class World:
                     path = self.fullPath(r1.coord, r2.coord)
                     dist = LineString(path).length
 
-                    G.add_edge(r1, r2, {'weight': dist, 'path': path})
+                    #G.add_edge(r1, r2, {'weight': dist, 'path': path})
+                    G.add_edge(r1.id, r2.id, weight= dist)
 
+        self.nxG = G
         return G

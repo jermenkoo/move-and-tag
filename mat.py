@@ -12,7 +12,7 @@ def solveLine(line):
     G = world.graph()
     #save graph
     #pickle.dump(G, open('./graphs/' + world.id + '.graph', 'wb'))    
-    #pickle.dump(world, open('./graphs/' + world.id + '.world', 'wb'))
+    pickle.dump(world, open('./graphs/' + world.id + '.world', 'wb'))
     #load graph
     #G = pickle.load('./graphs/' + world.id + '.graph', 'rb')
     
@@ -21,7 +21,7 @@ def solveLine(line):
     
     world.AGraphSolve(G)
     print (time.clock() - t0)
-    print(world.solution())
+    #print(world.solution())
     outFile.write(world.solution() + '\n')
     outFile.close()
     return world.solution()
@@ -46,16 +46,18 @@ if __name__ == '__main__':
     for line in inFile:
         t0 = time.clock()
         world = World(line)
-        #if(world.id == '23'):
-        #world.Asolve()
-        #world = pickle.load(open('./graphs/' + str(line) + '.world', 'rb'))
-        #G = pickle.load(open('./graphs/' + world.id + '.graph', 'rb'))
-        G = world.graph()
-        #print(G.edges)
-        world.AGraphSolve(G)
+        if(world.id == '8'):
+            #if(world.id == '23'):
+            #world.Asolve()
+            #world = pickle.load(open('./graphs/' + str(line) + '.world', 'rb'))
+            #G = pickle.load(open('./graphs/' + world.id + '.graph', 'rb'))
+            G = world.graph()
+            #print(G.edges)
+            world.MSTSolve(G)
+        #world.AGraphSolve(G)
         print (time.clock() - t0)
         # print(world.solution())
-        outFile.write(world.solution() + '\n')
+        #outFile.write(world.solution() + '\n')
 
     inFile.close()
     outFile.close()
