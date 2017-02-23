@@ -172,6 +172,11 @@ class World:
         out_edges = list(filter(lambda x: not robots[x[0]].alive, list(G[node].items())))
         return min(out_edges, key=lambda x: x[1]['weight'])
     
+    def gotoFurthestInList(self, robot, G, robots):
+        node = next(x for x in G.nodes() if robots[x].original_coord == robot.coord)
+        out_edges = list(filter(lambda x: not robots[x[0]].alive, list(G[node].items())))
+        return max(out_edges, key=lambda x: x[1]['weight'])
+    
     def gotoRobot(self, G, roboA, roboB):
         node = next(x for x in G.nodes() if self.robots[x].original_coord == roboA.coord)
         return next(x for x in G[node].items() if x[0] == roboB.id)
@@ -179,6 +184,52 @@ class World:
     
     def comparePath(self, min_cost, min_paths, my_try):
         return my_try[0] < min_cost
+    
+    #goto furtherst path first
+    def CGraphSolve(self, G):
+        self.AGraphSolveLen(G, 5)
+        if len(self.asleepRobots()) > 2:
+            #focus on robot 0
+            #find furthest
+            path_furthest = self.gotoFurthestInList(self.robots[0], G, self.robots)
+            target_robot = path_furthest[0]
+            #print('furthest', path_furthest)
+            min_robot = self.robots[0]
+            min_robot.alive = True
+            min_robot.time = 0
+            total_cost = 0
+            while min_robot.coord != self.robots[target_robot].coord:
+                print('goto' , min_robot.coord)
+                print('target', self.robots[target_robot].coord)
+                #for trobot in self.robots:
+                #    print( trobot.original_coord)
+                #print(self.robots)
+                node = next(x for x in G.nodes() if self.robots[x].original_coord == min_robot.coord)
+                out_edges = list(filter(lambda x: not self.robots[x[0]].alive, list(G[node].items())))
+                out_edges.sort(key=lambda x: x[1]['weight'])
+                #print(out_edges)
+                #print('target', target_robot)
+                #print('them', G[out_edges[0][0]])
+                #print('me' ,G[node])
+                int_path_target = next(x for x in out_edges if target_robot not in G[x[0]]
+                                       or (
+                                        ((total_cost + G[x[0]][target_robot]['weight'] + G[node][x[0]]['weight']) < (total_cost + G[node][target_robot]['weight']) * 1.005)
+                                        and
+                                        (G[x[0]][target_robot]['weight'] < G[node][target_robot]['weight'])))
+
+                total_cost += int_path_target[1]['weight']
+                min_path_robot = self.robots[int_path_target[0]]
+                
+                min_path_robot.alive = True
+                min_path_robot.time = min_robot.time
+                path_taken = int_path_target[1]['path']
+                if path_taken[0] != min_robot.coord:
+                    path_taken.reverse()
+
+                for coord in int_path_target[1]['path']:
+                    min_robot.goto(coord)
+        print('AGraphSolve')
+        self.AGraphSolve(G)
     
     
                 
@@ -239,6 +290,30 @@ class World:
                     min_robot.goto(coord)
         
             print('world', self.id, 'sleeping:', len(self.asleepRobots()))
+            
+            
+    def AGraphSolveLen(self, G, mylen):
+        while len(self.aliveRobots()) < mylen and len(self.asleepRobots()) != 0:
+            min_cost = float('inf')
+            min_path = None
+            min_robot = None
+            for robot in self.aliveRobots():
+                if self.gotoClosest(robot, G)[1]['weight'] + robot.time < min_cost:
+                    min_path = self.gotoClosest(robot, G)
+                    min_cost = min_path[1]['weight'] + robot.time
+                    min_robot = robot
+            min_robot.time += min_path[1]['weight']
+            min_path_robot = self.robots[min_path[0]]
+            
+            min_path_robot.alive = True
+            min_path_robot.time = min_robot.time
+            path_taken = min_path[1]['path']
+            if path_taken[0] != min_robot.coord:
+                path_taken.reverse()
+
+            for coord in path_taken:
+                min_robot.goto(coord)
+    
 
     def AGraphSolve(self, G):
         while len(self.asleepRobots()) != 0:
