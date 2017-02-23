@@ -38,12 +38,12 @@ if __name__ == '__main__':
         world = World(line)
         #if world.id == '1' or world.id=='15':
         #world.visibilityGraph()
-        #G = world.graph()        
+        #G = world.graph()
         #pickle.dump(G, open('./graphs/' + world.id + '.graph', 'wb'))
-        #if os.path.isfile('./graphs/' + world.id + '.graph'):        
+        #if os.path.isfile('./graphs/' + world.id + '.graph'):
         G = pickle.load(open('./graphs/' + world.id + '.graph', 'rb'))        
         #print(G.edges(data='weight'))
-        world.BGraphSolve(G)
+        world.AntSolve(G)
         print (time.clock() - t0)
         soln = world.solution()
         outFile.write(soln + '\n')

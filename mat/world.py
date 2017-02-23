@@ -1,5 +1,6 @@
 from mat.robot import Robot
 from mat.obstacle import Obstacle
+from mat.ant.dmst import AB_DCMST
 from shapely.geometry import LineString, Polygon, Point
 import pyvisgraph as vg
 import networkx as nx
@@ -262,6 +263,48 @@ class World:
             for coord in path_taken:
                 min_robot.goto(coord)
 
+    def getClosestEdge(self, G, node):
+        return min(G.edges(node, data=True), key=lambda x: x[2]['weight'])
+
+    def AntSolve(self, G):
+        # Find first path taken and remove robot 0
+        closest_edge = self.getClosestEdge(G, 0)[2]
+        first_path = closest_edge['path']
+        G.remove_node(0)
+
+        edges = list(map(lambda x: (int(x[2]['weight']), x[0], x[1]), G.edges(data=True)))
+        antBasedSolver = AB_DCMST(edges)
+        tree = antBasedSolver.getSolution(3)
+        tree_edges = list(map(lambda x: (x.u, x.v) , tree))
+
+
+        for coord in first_path:
+            self.robots[0].goto(coord)
+
+        # Mark visited robot as alive
+        for r in self.robots:
+            if r.original_coord == first_path[1]:
+                r.alive = True
+
+        while len(self.asleepRobots()) > 0:
+            print('asleepRobots: {}'.format(len(self.asleepRobots())))
+            for robot in self.aliveRobots():
+                node = next(x for x in G.nodes() if self.robots[x].original_coord == robot.coord)
+                edges_out = list(filter(lambda x: node in x, tree_edges))
+                nodes_out = list(map(lambda x: x[0] if x[0] != node else x[1], edges_out))
+                nodes_out_asleep = list(filter(lambda x: not self.robots[x].alive, nodes_out))
+
+                if len(nodes_out_asleep) == 0:
+                    continue
+                elif len(nodes_out_asleep) > 0:
+                    robot.goto(self.robots[nodes_out_asleep[0]].original_coord)
+                    self.robots[nodes_out_asleep[0]].alive = True
+                    print("Robot {} awakes robot {}".format(robot.id, self.robots[nodes_out_asleep[0]].id))
+
+                    if len(nodes_out_asleep) == 2:
+                        self.robots[node].goto(self.robots[nodes_out_asleep[1]].original_coord)
+                        self.robots[nodes_out_asleep[1]].alive = True
+                        print("Robot {} awakes robot {}".format(self.robots[node].id, self.robots[nodes_out_asleep[0]].id))
 
     def graph(self):
         G = nx.Graph()

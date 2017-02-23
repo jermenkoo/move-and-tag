@@ -13,7 +13,7 @@ http://www.cs.york.ac.uk/rts/docs/GECCO_2006/docs/p11.pdf
 '''
 
 from collections import defaultdict
-from UnionFind import UnionFind
+from .UnionFind import UnionFind
 import random
 
 class EdgeInfo:
