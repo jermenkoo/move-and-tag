@@ -8,6 +8,8 @@ import ast
 
 from multiprocessing import Pool
 
+import copy
+
 from shapely import speedups
 speedups.enable()
 
@@ -151,16 +153,150 @@ class World:
         return sol
 
     def aliveRobots(self):
-        return list(filter(lambda x: x.alive, self.robots))
+        return self.aliveRobotsInList(self.robots)
+    
+    def aliveRobotsInList(self, robots):
+        return list(filter(lambda x: x.alive, robots))
 
     def asleepRobots(self):
         return list(filter(lambda x: not x.alive, self.robots))
+    
+    def asleepRobotsInList(self, robots):
+        return list(filter(lambda x: not x.alive, robots))
 
-    def goto_closest(self, robot, G):
-        node = next(x for x in G.nodes() if self.robots[x].original_coord == robot.coord)
-        out_edges = list(filter(lambda x: not self.robots[x[0]].alive, list(G[node].items())))
+    def gotoClosest(self, robot, G):
+        return self.gotoClosestInList(robot, G, self.robots)
+    
+    def gotoClosestInList(self, robot, G, robots):
+        node = next(x for x in G.nodes() if robots[x].original_coord == robot.coord)
+        out_edges = list(filter(lambda x: not robots[x[0]].alive, list(G[node].items())))
         return min(out_edges, key=lambda x: x[1]['weight'])
+    
+    def gotoRobot(self, G, roboA, roboB):
+        node = next(x for x in G.nodes() if self.robots[x].original_coord == roboA.coord)
+        return next(x for x in G[node].items() if x[0] == roboB.id)
 
+    
+    def comparePath(self, min_cost, min_paths, my_try):
+        return my_try[0] < min_cost
+    
+        while len(self.asleepRobots()) != 0:
+            temp_robots = copy.deepcopy(self.robots)
+            self.robots = self.recGSolve(G, temp_robots, 1)[0]
+            print('Asleep Robots:', len(self.asleepRobots()))
+            '''
+            min_cost = float('inf')
+            min_paths = 1
+            min_path = None
+            min_robot = None
+            #min_robots = None
+            
+            if(len(self.asleepRobots()) == 1):
+                for robot in self.aliveRobots():
+                    if self.gotoClosest(robot, G)[1]['weight'] + robot.time < min_cost:
+                        min_path = self.gotoClosest(robot, G)
+                        min_cost = min_path[1]['weight'] + robot.time
+                        min_robot = robot
+                min_robot.time += min_path[1]['weight']
+                min_path_robot = self.robots[min_path[0]]
+                
+                min_path_robot.alive = True
+                min_path_robot.time = min_robot.time
+                path_taken = min_path[1]['path']
+                if path_taken[0] != min_robot.coord:
+                    path_taken.reverse()
+
+                for coord in path_taken:
+                    min_robot.goto(coord) 
+            else:
+                for robot in self.aliveRobotsInList(self.robots):
+                    for sleep_robot in self.asleepRobotsInList(self.robots):
+                        temp_robots = copy.deepcopy(self.robots)
+                        temp_robots[sleep_robot.id].alive = True
+                        temp_path = self.gotoRobot(G, robot, sleep_robot)
+                        temp_cost = temp_path[1]['weight'] + robot.time
+                        temp_robots[robot.id].time = temp_cost
+                        temp_robots[sleep_robot.id].time = temp_cost
+                            
+                        temp_try = self.recGSolve(G, temp_robots, 1)                
+                        #if self.comparePath(min_cost, min_paths, temp_try[2]):
+                        if min_cost > temp_try[1]:
+                            min_path = temp_path
+                            min_cost = temp_try[1] 
+                            min_robot = self.robots[robot.id]
+                            min_robots = temp_try[0] 
+                #self.robots = min_robots
+                
+                min_robot.time += min_path[1]['weight']
+                min_path_robot = self.robots[min_path[0]]
+                
+                min_path_robot.alive = True
+                min_path_robot.time = min_robot.time
+                path_taken = min_path[1]['path']
+                if path_taken[0] != min_robot.coord:
+                    path_taken.reverse()
+
+                for coord in path_taken:
+                    min_robot.goto(coord)
+                print('Asleep Robots:', len(self.asleepRobots()))'''
+                
+    def BOracle(self, G, robots, depth):        
+        min_cost = float('inf')
+        if depth == 0 or len(self.asleepRobotsInList(robots)) == 1:
+            #print(len(self.asleepRobotsInList(robots)), depth)
+            for robot in self.aliveRobotsInList(robots):
+                if self.gotoClosestInList(robot, G, robots)[1]['weight'] + robot.time < min_cost:
+                    min_cost = self.gotoClosestInList(robot, G, robots)[1]['weight'] + robot.time           
+        else:
+            for robot in self.aliveRobotsInList(robots):
+                for sleep_robot in self.asleepRobotsInList(robots):
+                    t_robots = copy.deepcopy(robots)                    
+                    t_cost = self.gotoRobot(G, robot, sleep_robot)[1]['weight']
+                    t_robots[robot.id].time += t_cost
+                    t_robots[sleep_robot.id].alive = True
+                    t_robots[sleep_robot.id].time = t_robots[robot.id].time
+                    t_cost = max(self.BOracle(G, t_robots, depth-1), t_robots[robot.id].time)
+                    if(t_cost < min_cost):
+                        min_cost = t_cost
+        return min_cost
+                    
+                
+    def BGraphSolve(self, G):
+        while len(self.asleepRobots()) != 0:
+            min_cost = float('inf')
+            min_path = None
+            min_robot = None
+            min_goto_robot = None
+            if(len(self.asleepRobots()) == 1):
+                self.AGraphSolve(G)
+            else:
+                for robot in self.aliveRobots():
+                    for sleep_robot in self.asleepRobotsInList(self.robots):
+                        t_robots = copy.deepcopy(self.robots)                    
+                        t_path = self.gotoRobot(G, robot, sleep_robot)
+                        t_robots[robot.id].time += t_path[1]['weight']
+                        t_robots[sleep_robot.id].alive = True
+                        t_robots[sleep_robot.id].time = t_robots[robot.id].time
+                        t_cost = max(self.BOracle(G, t_robots, 2), t_robots[robot.id].time)
+                        if(t_cost < min_cost):
+                            min_cost = t_cost
+                            min_path = t_path
+                            min_robot = robot
+                            min_goto_robot = sleep_robot.id
+                            
+                min_robot.time += min_path[1]['weight']
+                min_path_robot = self.robots[min_goto_robot]
+                
+                min_path_robot.alive = True
+                min_path_robot.time = min_robot.time
+                path_taken = min_path[1]['path']
+                if path_taken[0] != min_robot.coord:
+                    path_taken.reverse()
+
+                for coord in path_taken:
+                    min_robot.goto(coord)
+        
+            print('world', self.id, 'sleeping:', len(self.asleepRobots()))
 
     def AGraphSolve(self, G):
         while len(self.asleepRobots()) != 0:
@@ -168,8 +304,8 @@ class World:
             min_path = None
             min_robot = None
             for robot in self.aliveRobots():
-                if self.goto_closest(robot, G)[1]['weight'] + robot.time < min_cost:
-                    min_path = self.goto_closest(robot, G)
+                if self.gotoClosest(robot, G)[1]['weight'] + robot.time < min_cost:
+                    min_path = self.gotoClosest(robot, G)
                     min_cost = min_path[1]['weight'] + robot.time
                     min_robot = robot
             min_robot.time += min_path[1]['weight']
