@@ -291,5 +291,5 @@ class World:
         pos = {}
         for g in G.nodes():
             pos[g] = self.robots[g].coord
-        nx.draw(G, pos, node_size=20)
+        nx.draw_networkx(G, pos, node_size=200)
         plt.show()
