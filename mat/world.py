@@ -385,7 +385,7 @@ class World:
                     
                     for ss_robot in closest_sleeping_temp:
                         ss_cost += self.gotoRobot(G, self.robots[ss_robot[0]], sleep_robot)[1]['weight'] / my_weight
-                        my_weight += 1
+                        my_weight += 0.5
                     if ss_cost < min_cost:
                         min_path = sleep_robot_p
                         min_cost = ss_cost
