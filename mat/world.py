@@ -384,7 +384,12 @@ class World:
                     sleep_robot.alive = False
                     
                     for ss_robot in closest_sleeping_temp:
-                        ss_cost += self.gotoRobot(G, self.robots[ss_robot[0]], sleep_robot)[1]['weight'] / my_weight
+                        sleep_to_closest = self.gotoRobot(G, self.robots[ss_robot[0]], sleep_robot)[1]['weight']
+                        robot_to_closest = self.gotoRobot(G, self.robots[ss_robot[0]], robot)[1]['weight']
+                        if sleep_to_closest > robot_to_closest:
+                            ss_cost += self.gotoRobot(G, self.robots[ss_robot[0]], sleep_robot)[1]['weight'] * 0.5
+                        else:
+                            ss_cost += self.gotoRobot(G, self.robots[ss_robot[0]], sleep_robot)[1]['weight'] * 1
                         my_weight += 0.5
                     if ss_cost < min_cost:
                         min_path = sleep_robot_p
