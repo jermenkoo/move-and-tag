@@ -3,6 +3,7 @@ from mat.obstacle import Obstacle
 from shapely.geometry import LineString, Polygon, Point
 import pyvisgraph as vg
 import networkx as nx
+import matplotlib.pyplot as plt
 import ast
 
 
@@ -338,6 +339,7 @@ class World:
                 min_robot.goto(coord)
 
 
+
     def graph(self):
         G = nx.Graph()
 
@@ -359,3 +361,10 @@ class World:
                     G.add_edge(r1.id, r2.id, {'weight': dist, 'path': path})
 
         return G
+
+    def visualise(self, G):
+        pos = {}
+        for g in G.nodes():
+            pos[g] = self.robots[g].coord
+        nx.draw_networkx(G, pos, node_size=200)
+        plt.show()
