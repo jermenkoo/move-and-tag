@@ -359,6 +359,47 @@ class World:
                 min_robot.goto(coord)
 
 
+    def EGraphSolve(self, G):
+        t0 = time.clock()
+        
+        while len(self.asleepRobots()) > 5:
+            min_cost = float('inf')
+            min_path = None
+            min_robot = None
+            for robot in self.aliveRobots():
+                #chose robot with smallest path to next 3 robots
+                min_in_cost = float('inf')
+                closest_sleeping = self.getListOfClosest(robot, G, self.robots)[:5]
+                for sleep_robot_p in closest_sleeping:
+                    sleep_robot = self.robots[sleep_robot_p[0]]
+                    robot.time += sleep_robot_p[1]['weight']
+                    sleep_robot.time = robot.time
+                    sleep_robot.alive = True
+                    closest_sleeping_temp = self.getListOfClosest(sleep_robot, G, self.robots)[:5]
+                    sleep_robot.alive = False
+                    ss_cost = robot.time
+                    for ss_robot in closest_sleeping_temp:
+                        ss_cost += self.gotoRobot(G, self.robots[ss_robot[0]], sleep_robot)[1]['weight']
+                    if ss_cost < min_cost:
+                        min_path = sleep_robot_p
+                        min_cost = ss_cost
+                        min_robot = robot
+                    sleep_robot.time = 0
+                    robot.time -= sleep_robot_p[1]['weight']
+            min_robot.time += min_path[1]['weight']
+            min_path_robot = self.robots[min_path[0]]
+            
+            min_path_robot.alive = True
+            min_path_robot.time = min_robot.time
+            path_taken = min_path[1]['path']
+            if path_taken[0] != min_robot.coord:
+                path_taken.reverse()
+
+            for coord in path_taken:
+                min_robot.goto(coord)
+            print('world', self.id, 'sleeping:', len(self.asleepRobots()), 'took', time.clock() - t0)
+        self.AGraphSolve(G)
+
 
     def graph(self):
         G = nx.Graph()
