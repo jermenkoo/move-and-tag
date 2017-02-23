@@ -359,9 +359,11 @@ class World:
                 min_robot.goto(coord)
 
 
-    def EGraphSolve(self, G):
-        t0 = time.clock()
-        my_range = 8
+    def EGraphSolve(self, G, my_range):
+        t0 = time.clock()        
+        
+        path_furthest = self.gotoFurthestInList(self.robots[0], G, self.robots)
+        target_robot = path_furthest[0]
         
         while len(self.asleepRobots()) > my_range:
             min_cost = float('inf')
@@ -380,21 +382,26 @@ class World:
                     robot.time += sleep_robot_p[1]['weight']
                     sleep_robot.time = robot.time
                     sleep_robot.alive = True
-                    closest_sleeping_temp = self.getListOfClosest(sleep_robot, G, self.robots)[:8]
+                    closest_sleeping_temp = self.getListOfClosest(sleep_robot, G, self.robots)[:my_range]
                     sleep_robot.alive = False
                     
                     for ss_robot in closest_sleeping_temp:
-                        sleep_to_closest = self.gotoRobot(G, self.robots[ss_robot[0]], sleep_robot)[1]['weight']
-                        robot_to_closest = self.gotoRobot(G, self.robots[ss_robot[0]], robot)[1]['weight']
-                        if sleep_to_closest > robot_to_closest:
-                            ss_cost += self.gotoRobot(G, self.robots[ss_robot[0]], sleep_robot)[1]['weight'] * 0.5
-                        else:
-                            ss_cost += self.gotoRobot(G, self.robots[ss_robot[0]], sleep_robot)[1]['weight'] * 1
+                        #sleep_to_closest = self.gotoRobot(G, self.robots[ss_robot[0]], sleep_robot)[1]['weight']
+                        #robot_to_closest = self.gotoRobot(G, self.robots[ss_robot[0]], robot)[1]['weight']
+                        #if sleep_to_closest > robot_to_closest:
+                        ss_cost += self.gotoRobot(G, self.robots[ss_robot[0]], sleep_robot)[1]['weight'] / my_weight
+                        
+                        
+                        #else:
+                        #    ss_cost += self.gotoRobot(G, self.robots[ss_robot[0]], sleep_robot)[1]['weight'] * 1
                         my_weight += 0.5
                     if ss_cost < min_cost:
-                        min_path = sleep_robot_p
-                        min_cost = ss_cost
+                        min_path = sleep_robot_p                        
                         min_robot = robot
+                        #add weight for furthest 
+                        #ss_cost += self.gotoRobot(G, self.robots[ss_robot[0]], robot)[1]['weight'] * 0.01
+                        min_cost = ss_cost
+                    
                     sleep_robot.time = 0
                     robot.time -= sleep_robot_p[1]['weight']
             min_robot.time += min_path[1]['weight']
