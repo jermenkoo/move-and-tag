@@ -180,65 +180,7 @@ class World:
     def comparePath(self, min_cost, min_paths, my_try):
         return my_try[0] < min_cost
     
-        while len(self.asleepRobots()) != 0:
-            temp_robots = copy.deepcopy(self.robots)
-            self.robots = self.recGSolve(G, temp_robots, 1)[0]
-            print('Asleep Robots:', len(self.asleepRobots()))
-            '''
-            min_cost = float('inf')
-            min_paths = 1
-            min_path = None
-            min_robot = None
-            #min_robots = None
-            
-            if(len(self.asleepRobots()) == 1):
-                for robot in self.aliveRobots():
-                    if self.gotoClosest(robot, G)[1]['weight'] + robot.time < min_cost:
-                        min_path = self.gotoClosest(robot, G)
-                        min_cost = min_path[1]['weight'] + robot.time
-                        min_robot = robot
-                min_robot.time += min_path[1]['weight']
-                min_path_robot = self.robots[min_path[0]]
-                
-                min_path_robot.alive = True
-                min_path_robot.time = min_robot.time
-                path_taken = min_path[1]['path']
-                if path_taken[0] != min_robot.coord:
-                    path_taken.reverse()
-
-                for coord in path_taken:
-                    min_robot.goto(coord) 
-            else:
-                for robot in self.aliveRobotsInList(self.robots):
-                    for sleep_robot in self.asleepRobotsInList(self.robots):
-                        temp_robots = copy.deepcopy(self.robots)
-                        temp_robots[sleep_robot.id].alive = True
-                        temp_path = self.gotoRobot(G, robot, sleep_robot)
-                        temp_cost = temp_path[1]['weight'] + robot.time
-                        temp_robots[robot.id].time = temp_cost
-                        temp_robots[sleep_robot.id].time = temp_cost
-                            
-                        temp_try = self.recGSolve(G, temp_robots, 1)                
-                        #if self.comparePath(min_cost, min_paths, temp_try[2]):
-                        if min_cost > temp_try[1]:
-                            min_path = temp_path
-                            min_cost = temp_try[1] 
-                            min_robot = self.robots[robot.id]
-                            min_robots = temp_try[0] 
-                #self.robots = min_robots
-                
-                min_robot.time += min_path[1]['weight']
-                min_path_robot = self.robots[min_path[0]]
-                
-                min_path_robot.alive = True
-                min_path_robot.time = min_robot.time
-                path_taken = min_path[1]['path']
-                if path_taken[0] != min_robot.coord:
-                    path_taken.reverse()
-
-                for coord in path_taken:
-                    min_robot.goto(coord)
-                print('Asleep Robots:', len(self.asleepRobots()))'''
+    
                 
     def BOracle(self, G, robots, depth):        
         min_cost = float('inf')
