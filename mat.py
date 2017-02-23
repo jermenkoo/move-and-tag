@@ -43,7 +43,7 @@ if __name__ == '__main__':
         #if os.path.isfile('./graphs/' + world.id + '.graph'):        
         G = pickle.load(open('./graphs/' + world.id + '.graph', 'rb'))        
         #print(G.edges(data='weight'))
-        world.BGraphSolve(G)
+        world.AGraphSolve(G)
         print (time.clock() - t0)
         soln = world.solution()
         outFile.write(soln + '\n')
