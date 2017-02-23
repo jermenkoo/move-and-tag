@@ -1,18 +1,20 @@
 from mat.robot import Robot
 from mat.obstacle import Obstacle
-from shapely.geometry import LineString, Polygon, Point
-import pyvisgraph as vg
+#from shapely.geometry import LineString, Polygon, Point
+#import pyvisgraph as vg
 import networkx as nx
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import ast
 
 
 from multiprocessing import Pool
 
 import copy
+import time
 
-from shapely import speedups
-speedups.enable()
+
+#from shapely import speedups
+#speedups.enable()
 
 class World:
     def __init__(self, line):
@@ -173,6 +175,12 @@ class World:
         out_edges = list(filter(lambda x: not robots[x[0]].alive, list(G[node].items())))
         return min(out_edges, key=lambda x: x[1]['weight'])
     
+    def getListOfClosest(self, robot, G, robots):
+        node = next(x for x in G.nodes() if robots[x].original_coord == robot.coord)
+        out_edges = list(filter(lambda x: not robots[x[0]].alive, list(G[node].items())))
+        out_edges.sort(key=lambda x: x[1]['weight'])
+        return out_edges
+    
     def gotoFurthestInList(self, robot, G, robots):
         node = next(x for x in G.nodes() if robots[x].original_coord == robot.coord)
         out_edges = list(filter(lambda x: not robots[x[0]].alive, list(G[node].items())))
@@ -242,8 +250,11 @@ class World:
                 if self.gotoClosestInList(robot, G, robots)[1]['weight'] + robot.time < min_cost:
                     min_cost = self.gotoClosestInList(robot, G, robots)[1]['weight'] + robot.time           
         else:
+            asleep_robots = self.asleepRobotsInList(robots)
             for robot in self.aliveRobotsInList(robots):
-                for sleep_robot in self.asleepRobotsInList(robots):
+                closest_sleeping = self.getListOfClosest(robot, G, robots)[0:5]
+                for sleep_robot_p in closest_sleeping:
+                    sleep_robot = self.robots[sleep_robot_p[0]]
                     t_robots = copy.deepcopy(robots)                    
                     t_cost = self.gotoRobot(G, robot, sleep_robot)[1]['weight']
                     t_robots[robot.id].time += t_cost
@@ -253,10 +264,26 @@ class World:
                     if(t_cost < min_cost):
                         min_cost = t_cost
         return min_cost
+    
+    def innerBGSolve(self, G, robots, roboA):
+        closest_sleeping = self.getListOfClosest(roboA, G, robots)
+        for sleep_robot_p in closest_sleeping:
+            sleep_robot = self.robots[sleep_robot_p[0]]
+            t_robots = copy.deepcopy(robots)                    
+            t_path = self.gotoRobot(G, roboA, sleep_robot)
+            t_robots[roboA.id].time += t_path[1]['weight']
+            t_robots[sleep_robot.id].alive = True
+            t_robots[sleep_robot.id].time = t_robots[roboA.id].time
+            t_cost = max(self.BOracle(G, t_robots, 0), t_robots[roboA.id].time)
+            
+        return(t_cost, t_path, roboA, sleep_robot.id)
+            
                     
                 
     def BGraphSolve(self, G):
+       
         while len(self.asleepRobots()) != 0:
+            t0 = time.clock()
             min_cost = float('inf')
             min_path = None
             min_robot = None
@@ -264,19 +291,13 @@ class World:
             if(len(self.asleepRobots()) == 1):
                 self.AGraphSolve(G)
             else:
-                for robot in self.aliveRobots():
-                    for sleep_robot in self.asleepRobotsInList(self.robots):
-                        t_robots = copy.deepcopy(self.robots)                    
-                        t_path = self.gotoRobot(G, robot, sleep_robot)
-                        t_robots[robot.id].time += t_path[1]['weight']
-                        t_robots[sleep_robot.id].alive = True
-                        t_robots[sleep_robot.id].time = t_robots[robot.id].time
-                        t_cost = max(self.BOracle(G, t_robots, 2), t_robots[robot.id].time)
-                        if(t_cost < min_cost):
-                            min_cost = t_cost
-                            min_path = t_path
-                            min_robot = robot
-                            min_goto_robot = sleep_robot.id
+                asleep_robots = self.asleepRobotsInList(self.robots)
+                results = map(lambda robot: self.innerBGSolve(G, self.robots, robot), self.aliveRobotsInList(self.robots))
+                best_one = min(results, key= lambda x: x[0])
+                min_cost = best_one[0]
+                min_path = best_one[1]
+                min_robot = best_one[2]
+                min_goto_robot = best_one[3]
                             
                 min_robot.time += min_path[1]['weight']
                 min_path_robot = self.robots[min_goto_robot]
@@ -290,7 +311,7 @@ class World:
                 for coord in path_taken:
                     min_robot.goto(coord)
         
-            print('world', self.id, 'sleeping:', len(self.asleepRobots()))
+            print('world', self.id, 'sleeping:', len(self.asleepRobots()), 'took', time.clock() - t0)
             
             
     def AGraphSolveLen(self, G, mylen):
