@@ -361,25 +361,31 @@ class World:
 
     def EGraphSolve(self, G):
         t0 = time.clock()
+        my_range = 8
         
-        while len(self.asleepRobots()) > 5:
+        while len(self.asleepRobots()) > my_range:
             min_cost = float('inf')
             min_path = None
             min_robot = None
             for robot in self.aliveRobots():
                 #chose robot with smallest path to next 3 robots
                 min_in_cost = float('inf')
-                closest_sleeping = self.getListOfClosest(robot, G, self.robots)[:5]
+                closest_sleeping = self.getListOfClosest(robot, G, self.robots)[:my_range]
                 for sleep_robot_p in closest_sleeping:
                     sleep_robot = self.robots[sleep_robot_p[0]]
+                    
+                    my_weight = 1
+                    ss_cost = robot.time + sleep_robot_p[1]['weight']
+                    
                     robot.time += sleep_robot_p[1]['weight']
                     sleep_robot.time = robot.time
                     sleep_robot.alive = True
-                    closest_sleeping_temp = self.getListOfClosest(sleep_robot, G, self.robots)[:5]
+                    closest_sleeping_temp = self.getListOfClosest(sleep_robot, G, self.robots)[:8]
                     sleep_robot.alive = False
-                    ss_cost = robot.time
+                    
                     for ss_robot in closest_sleeping_temp:
-                        ss_cost += self.gotoRobot(G, self.robots[ss_robot[0]], sleep_robot)[1]['weight']
+                        ss_cost += self.gotoRobot(G, self.robots[ss_robot[0]], sleep_robot)[1]['weight'] / my_weight
+                        my_weight += 1
                     if ss_cost < min_cost:
                         min_path = sleep_robot_p
                         min_cost = ss_cost
