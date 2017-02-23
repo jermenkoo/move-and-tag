@@ -265,7 +265,11 @@ class World:
                         min_cost = t_cost
         return min_cost
     
-    def innerBGSolve(self, G, robots, roboA):
+    def innerBGSolve(self, roboA):
+        G = self.G
+        lstRobo = self.lstRobo
+        robots = self.robots
+        print('im alive')
         closest_sleeping = self.getListOfClosest(roboA, G, robots)
         for sleep_robot_p in closest_sleeping:
             sleep_robot = self.robots[sleep_robot_p[0]]
@@ -281,37 +285,35 @@ class World:
                     
                 
     def BGraphSolve(self, G):
-       
-        while len(self.asleepRobots()) != 0:
-            t0 = time.clock()
-            min_cost = float('inf')
-            min_path = None
-            min_robot = None
-            min_goto_robot = None
-            if(len(self.asleepRobots()) == 1):
-                self.AGraphSolve(G)
-            else:
-                asleep_robots = self.asleepRobotsInList(self.robots)
-                results = map(lambda robot: self.innerBGSolve(G, self.robots, robot), self.aliveRobotsInList(self.robots))
-                best_one = min(results, key= lambda x: x[0])
-                min_cost = best_one[0]
-                min_path = best_one[1]
-                min_robot = best_one[2]
-                min_goto_robot = best_one[3]
-                            
-                min_robot.time += min_path[1]['weight']
-                min_path_robot = self.robots[min_goto_robot]
-                
-                min_path_robot.alive = True
-                min_path_robot.time = min_robot.time
-                path_taken = min_path[1]['path']
-                if path_taken[0] != min_robot.coord:
-                    path_taken.reverse()
+        self.G = G
+        self.lstRobo = [(x.alive, x.original_coord, x.coord) for x in self.robots]
+        with Pool(1) as p:       
+            while len(self.asleepRobots()) != 0:
+                t0 = time.clock()
+                if(len(self.asleepRobots()) == 1):
+                    self.AGraphSolve(G)
+                else:
+                    asleep_robots = self.asleepRobotsInList(self.robots)
+                    results = p.map(self.innerBGSolve, self.aliveRobotsInList(self.robots))
+                    best_one = min(results, key= lambda x: x[0])
+                    min_cost = best_one[0]
+                    min_path = best_one[1]
+                    min_robot = best_one[2]
+                    min_goto_robot = best_one[3]
+                                
+                    min_robot.time += min_path[1]['weight']
+                    min_path_robot = self.robots[min_goto_robot]
+                    
+                    min_path_robot.alive = True
+                    min_path_robot.time = min_robot.time
+                    path_taken = min_path[1]['path']
+                    if path_taken[0] != min_robot.coord:
+                        path_taken.reverse()
 
-                for coord in path_taken:
-                    min_robot.goto(coord)
-        
-            print('world', self.id, 'sleeping:', len(self.asleepRobots()), 'took', time.clock() - t0)
+                    for coord in path_taken:
+                        min_robot.goto(coord)
+            
+                print('world', self.id, 'sleeping:', len(self.asleepRobots()), 'took', time.clock() - t0)
             
             
     def AGraphSolveLen(self, G, mylen):
