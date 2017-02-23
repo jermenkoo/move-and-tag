@@ -252,7 +252,7 @@ class World:
         else:
             asleep_robots = self.asleepRobotsInList(robots)
             for robot in self.aliveRobotsInList(robots):
-                closest_sleeping = self.getListOfClosest(robot, G, robots)[0:5]
+                closest_sleeping = self.getListOfClosest(robot, G, robots)[:5]
                 for sleep_robot_p in closest_sleeping:
                     sleep_robot = self.robots[sleep_robot_p[0]]
                     t_robots = copy.deepcopy(robots)                    
@@ -266,7 +266,7 @@ class World:
         return min_cost
     
     def innerBGSolve(self, G, robots, roboA):
-        closest_sleeping = self.getListOfClosest(roboA, G, robots)
+        closest_sleeping = self.getListOfClosest(roboA, G, robots)[:5]
         for sleep_robot_p in closest_sleeping:
             sleep_robot = self.robots[sleep_robot_p[0]]
             t_robots = copy.deepcopy(robots)                    
@@ -335,7 +335,6 @@ class World:
 
             for coord in path_taken:
                 min_robot.goto(coord)
-    
 
     def AGraphSolve(self, G):
         while len(self.asleepRobots()) != 0:
