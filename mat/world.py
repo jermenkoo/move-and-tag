@@ -11,6 +11,7 @@ from multiprocessing import Pool
 
 import copy
 import time
+import random
 
 
 #from shapely import speedups
@@ -28,7 +29,7 @@ class World:
         line = ''.join(line.split())
 
         self.id = line.split(':')[0]
-        print (self.id)
+        #print (self.id)
         robots_str = line.split(':')[1].split('#')[0]
         obstacles_str = None
 
@@ -48,6 +49,9 @@ class World:
             for idx, obstacle_str in enumerate(obstacles_str.split(';')):
                 vertexes = list(ast.literal_eval(obstacle_str))
                 self.obstacles.append(Obstacle(idx, vertexes))
+                
+    def getTotalCost(self):
+        return max(self.robots, key=lambda x: x.time).time
 
     def visibilityGraph(self):
         polys = map(lambda x: x.vg_poly, self.obstacles)
@@ -345,6 +349,29 @@ class World:
                 if self.gotoClosest(robot, G)[1]['weight'] + robot.time < min_cost:
                     min_path = self.gotoClosest(robot, G)
                     min_cost = min_path[1]['weight'] + robot.time
+                    min_robot = robot
+            min_robot.time += min_path[1]['weight']
+            min_path_robot = self.robots[min_path[0]]
+            
+            min_path_robot.alive = True
+            min_path_robot.time = min_robot.time
+            path_taken = min_path[1]['path']
+            if path_taken[0] != min_robot.coord:
+                path_taken.reverse()
+
+            for coord in path_taken:
+                min_robot.goto(coord)
+                
+    def FuzzGraphSolve(self, G):
+        random.seed()
+        while len(self.asleepRobots()) > 0:
+            min_cost = float('inf')
+            min_path = None
+            min_robot = None
+            for robot in self.aliveRobots():
+                if self.gotoClosest(robot, G)[1]['weight'] + robot.time < min_cost:
+                    min_path = self.gotoClosest(robot, G)
+                    min_cost = (min_path[1]['weight'] * (random.randint(10,20) / 15) + robot.time)
                     min_robot = robot
             min_robot.time += min_path[1]['weight']
             min_path_robot = self.robots[min_path[0]]
