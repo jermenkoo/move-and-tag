@@ -364,14 +364,14 @@ class World:
                 
     def FuzzGraphSolve(self, G):
         random.seed()
-        while len(self.asleepRobots()) > 0:
+        while len(self.asleepRobots()) > 50:
             min_cost = float('inf')
             min_path = None
             min_robot = None
             for robot in self.aliveRobots():
                 if self.gotoClosest(robot, G)[1]['weight'] + robot.time < min_cost:
                     min_path = self.gotoClosest(robot, G)
-                    min_cost = (min_path[1]['weight'] * (random.randint(10,20) / 15) + robot.time)
+                    min_cost = (min_path[1]['weight'] * (random.randint(20, 180) / 100) + robot.time)
                     min_robot = robot
             min_robot.time += min_path[1]['weight']
             min_path_robot = self.robots[min_path[0]]
@@ -384,6 +384,7 @@ class World:
 
             for coord in path_taken:
                 min_robot.goto(coord)
+        self.AGraphSolve(G)
 
 
     def EGraphSolve(self, G, my_range):
